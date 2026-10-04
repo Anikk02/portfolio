@@ -26,10 +26,10 @@ A full-stack, dark-tech portfolio website for **Aniket Paswan** (Backend Enginee
 |--------------|-------------------------------------------------------------------------|
 | **Backend**  | Python 3.13, FastAPI, Uvicorn, SQLAlchemy 2, Pydantic v2               |
 | **Database** | PostgreSQL (Drizzle ORM for schema management, SQLAlchemy for queries)  |
-| **Frontend** | React 18, Vite 7, TypeScript, Tailwind CSS, Framer Motion, Wouter      |
+| **Frontend** | React 19, Vite 7, TypeScript, Tailwind CSS, Framer Motion, Wouter      |
 | **UI**       | shadcn/ui (Radix UI primitives), Lucide React, React Icons              |
 | **API Hooks**| TanStack React Query + Orval-generated hooks from OpenAPI spec          |
-| **Package**  | pnpm workspaces (monorepo)                                              |
+| **Package**  | npm workspaces                                                          |
 
 ---
 
@@ -108,15 +108,12 @@ workspace/
 │           ├── newsletter.ts
 │           └── analytics.ts
 │
-├── artifacts/                        # Replit service wrappers (config only)
-│   ├── portfolio/.replit-artifact/   # Routes web traffic → frontend/
-│   └── api-server/.replit-artifact/  # Routes /api traffic → backend/
+├── artifacts/                        # Additional standalone UI artifacts
 │
 ├── attached_assets/
 │   └── AniketPaswan_*.pdf            # Resume PDF (served for download)
 │
-├── package.json                      # Root workspace config
-├── pnpm-workspace.yaml               # Includes: artifacts/*, frontend, lib/*
+├── package.json                      # Root workspace scripts
 ├── tsconfig.base.json                # Shared TS compiler options
 └── README.md
 ```
@@ -128,8 +125,8 @@ workspace/
 | Tool       | Version  | Notes                                    |
 |------------|----------|------------------------------------------|
 | Node.js    | ≥ 20     | LTS recommended                          |
-| pnpm       | ≥ 9      | `npm install -g pnpm`                    |
-| Python     | ≥ 3.11   | 3.13 used in production                  |
+| npm        | ≥ 10     | Included with Node.js                    |
+| Python     | ≥ 3.13   | Required by `pyproject.toml`              |
 | PostgreSQL | ≥ 15     | Local or cloud (Neon, Supabase, etc.)    |
 
 ---
@@ -139,11 +136,11 @@ workspace/
 | Variable         | Required | Description                                                     |
 |------------------|----------|-----------------------------------------------------------------|
 | `DATABASE_URL`   | ✅ Yes   | PostgreSQL connection string, e.g. `postgresql://user:pass@host:5432/db` |
-| `SESSION_SECRET` | ✅ Yes   | Secret string for session signing                               |
-| `PORT`           | Optional | Frontend dev server port (Replit sets this automatically)       |
-| `BASE_PATH`      | Optional | Frontend URL base path (Replit sets this automatically)         |
+| `PORT`           | Optional | Frontend dev server port (defaults to `5173`)                   |
+| `BASE_PATH`      | Optional | Frontend URL base path (defaults to `/`)                        |
+| `API_PROXY_TARGET` | Optional | Backend URL proxied by Vite (defaults to `http://127.0.0.1:8000`) |
 
-> On **Replit**, these are managed as Secrets and injected automatically — no `.env` file needed.
+Copy `.env.example` to `.env` and set `DATABASE_URL` to your local PostgreSQL connection string. The backend loads this file automatically.
 
 ---
 
@@ -152,42 +149,51 @@ workspace/
 ### 1. Install dependencies
 
 ```bash
-# JavaScript packages (frontend + shared libs)
-pnpm install
+# Install frontend packages from the repository root
+npm --prefix frontend install
 
-# Python packages (backend)
-pip install -r backend/requirements.txt
+# Local configuration and Python packages (backend)
+cp .env.example .env
+python -m venv .venv
+# Windows PowerShell: .\.venv\Scripts\Activate.ps1
+# macOS/Linux: source .venv/bin/activate
+python -m pip install -r backend/requirements.txt
 ```
 
-### 2. Push the database schema
+### 2. Start PostgreSQL
+
+Start PostgreSQL and create a local database named `portfolio` (or update `DATABASE_URL` in `.env` to match your local database). On Windows, open PowerShell as Administrator and run:
+
+```powershell
+Start-Service postgresql-x64-18
+Get-Service postgresql-x64-18
+Test-NetConnection 127.0.0.1 -Port 5432
+```
+
+Continue once the service is `Running` and the port check succeeds. Use the PostgreSQL username and password configured on your machine in `DATABASE_URL`.
+
+### 3. Start the backend
 
 ```bash
-pnpm --filter @workspace/db run push
+# From the repository root
+python main.py
 ```
 
-### 3. Seed the database with real resume data
+On startup, FastAPI automatically:
+
+- Verifies that `DATABASE_URL` points to PostgreSQL
+- Creates any missing application tables
+- Inserts the portfolio seed data only when the project, blog, and resume tables are empty
+- Leaves existing data unchanged on later restarts
+
+### 4. Start the frontend
 
 ```bash
-python backend/seed.py
+# In a second terminal, from the repository root
+npm run dev
 ```
 
-This inserts:
-- **3 projects** — API Security System, FastAPI Auth System, Mental Health Chatbot
-- **3 blog posts** — technical write-ups matching each project
-- **1 resume record** — links to the PDF in `attached_assets/`
-
-### 4. Start both services
-
-```bash
-# Terminal A — FastAPI backend (port 8080)
-cd backend
-uvicorn main:app --host 0.0.0.0 --port 8080 --reload
-
-# Terminal B — React frontend
-PORT=3000 BASE_PATH=/ pnpm --filter @workspace/frontend run dev
-```
-
-Open `http://localhost:3000` for the site, `http://localhost:8080/api/healthz` to confirm the API.
+Open `http://localhost:5173` for the site, `http://localhost:8000/api/healthz` to confirm the API.
 
 ---
 
@@ -205,22 +211,23 @@ Open `http://localhost:3000` for the site, `http://localhost:8080/api/healthz` t
 | `newsletter_subscribers` | Email newsletter subscribers               |
 | `analytics_events`       | Page-view and interaction event log        |
 
-### Schema commands
+### Schema and seed commands
+
+Normal application startup creates missing tables automatically. The commands below are useful for explicit schema work or deliberately replacing the seed content:
 
 ```bash
-# Apply schema changes to the database
-pnpm --filter @workspace/db run push
-
-# Re-seed with fresh real data (clears then re-inserts)
+# Force-reseed with fresh resume data (clears projects, blogs, and resume records)
 python backend/seed.py
 ```
+
+Set `AUTO_SEED_DATA=false` to disable the safe first-start seed behavior.
 
 ---
 
 ## API Reference
 
-Base path: `/api` — served by FastAPI on port `8080`.  
-Interactive docs: `http://localhost:8080/docs` (Swagger UI, auto-generated).
+Base path: `/api` — served by FastAPI on port `8000`.
+Interactive docs: `http://localhost:8000/docs` (Swagger UI, auto-generated).
 
 | Method | Endpoint                  | Description                             |
 |--------|---------------------------|-----------------------------------------|
@@ -268,33 +275,24 @@ All API calls use **TanStack React Query** hooks auto-generated from `lib/api-sp
 | `@workspace/api-zod`          | Orval-generated Zod schemas (kept for reference / migration) |
 | `@workspace/db`               | Drizzle ORM schema + `DATABASE_URL`-based client             |
 
-### Regenerate API client after spec changes
-
-```bash
-pnpm --filter @workspace/api-spec codegen
-```
+The checked-in API client is used directly by the frontend. Regeneration is not required for normal local development.
 
 ---
 
 ## Deployment
 
-The project runs on **Replit Autoscale**:
-
-- `backend/` → FastAPI served by Uvicorn on `/api`
-- `frontend/` → Vite static build served at `/`
-
-For other platforms (Railway, Render, Fly.io):
+For local development, run the frontend and backend in separate terminals as described above. For deployment to a host of your choice:
 
 ```bash
 # Build frontend
-pnpm --filter @workspace/frontend run build
+npm run build
 # Serve frontend/dist/public as static files
 
 # Run backend
-cd backend && uvicorn main:app --host 0.0.0.0 --port 8080
+cd backend && python -m uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-Make sure `DATABASE_URL` and `SESSION_SECRET` are set in the environment.
+Make sure `DATABASE_URL` is set in the environment.
 
 ---
 

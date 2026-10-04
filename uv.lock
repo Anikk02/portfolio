@@ -310,7 +310,7 @@ wheels = [
 ]
 
 [[package]]
-name = "repl-nix-workspace"
+name = "aniket-portfolio-api"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

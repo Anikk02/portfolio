@@ -44,6 +44,24 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
-# Replit
+# Local environment
 .cache/
 .local/
+.agents/memory/frontend-icon-library.md
+.agents/memory/postgresql-pool.md
+.env
+.venv/
+Aniket__Paswan.pdf
+__pycache__/
+attached_assets/Aniket__Paswan.pdf
+backend/Aniket__Paswan.pdf
+backend/__pycache__/
+backend/routers/__pycache__/
+frontend/public/
+frontend/src/lib/normalize-list.ts
+.npmrc
+uv.lock
+package-lock.json
+pyproject.toml
+.agent/
+.agent
