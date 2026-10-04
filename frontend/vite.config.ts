@@ -17,12 +17,6 @@ export default defineConfig({
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),
       '@assets': path.resolve(import.meta.dirname, '..', 'attached_assets'),
-      '@tanstack/react-query': path.resolve(
-        import.meta.dirname,
-        'node_modules',
-        '@tanstack',
-        'react-query',
-      ),
       '@workspace/api-client-react': path.resolve(
         import.meta.dirname,
         '..',
